@@ -1,3 +1,5 @@
+[![PyPI version](https://badge.fury.io/py/characterizethis.svg)](https://badge.fury.io/py/characterizethis)
+
 # characerizeTHIS
 
 Tools to find out what we should characterize!
