@@ -11,11 +11,11 @@ Tools to find out what we should characterize!
 * Assume a circular orbit (this is largely true)
 * Assume HST WFC3 for followup instrument (this is reasonable)
 * Assume 1 second exposure time with a scan rate of 0.15s (this could be improved for each target)
-* Assume HST WFC3 has no saturation limit. (This could be acheived with scanning)
+* Assume HST WFC3 has no saturation limit. (This could be achieved with scanning)
 * Assume one observation is taken (this is an underestimate)
 * Assume 50 pixels of the detector are illuminated for the scan (this is reasonable)
-* Assume 5 scale heights of atmsophere (this is an approximation)
-* Assume atmosphere is purely hyrdogen (this is likely to be wrong for most small planets)
+* Assume 5 scale heights of atmosphere (this is an approximation)
+* Assume atmosphere is purely hydrogen (this is likely to be wrong for most small planets)
 * Assume atmosphere is entirely opaque in the WFC3 bandpass (this is an overestimate)
 * Assume starspot free (this is unlikely)
 * Where masses are unknown, assume mass-radius relation from Weiss 2014 (this is an approximation)
@@ -23,3 +23,21 @@ Tools to find out what we should characterize!
 * Assume planets have no reflection, all light us absorbed
 
 All told, this will provide an overestimate of the signal or the 'best case' scenario.
+
+### Installation
+
+```
+  pip install characterizethis
+```
+
+or
+
+```
+  git clone https://github.com/christinahedges/characterizethis.git
+  cd characterizethis
+  pip install -e .
+```
+
+### Also
+
+This is a neat way to keep an up to date version of the NASA Exoplanet Archive
