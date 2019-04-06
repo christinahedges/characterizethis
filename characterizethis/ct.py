@@ -30,6 +30,24 @@ def check_data_on_import():
         retrieve_online_data()
 
 def _fill_data(df, guess_masses=False):
+    mm = pd.read_csv( '{}/data/mamajekmodels.csv'.format(PACKAGEDIR))
+    k = np.isfinite(mm.R_Rsun) & (np.isfinite(mm.Msun))
+    mm = mm[k].sort_values('R_Rsun').reset_index(drop=True)
+
+    nan = ~np.isfinite(df.st_mass)
+    st_mass = np.interp(df.st_rad, mm.R_Rsun[k], mm.Msun[k])
+    df.loc[nan, ['st_mass']] = st_mass[nan]
+
+    nan = ~np.isfinite(df.pl_orbincl)
+    df.loc[nan, ['pl_orbincl']] = np.zeros(nan.sum()) + 90
+
+
+    a = (((np.asarray(df.pl_orbper)*u.day)**2 * (G * np.asarray(df.st_mass)*u.solMass/4*np.pi**2))**(1/3)).to(u.AU).value
+    nan = ~np.isfinite(df.pl_orbsmax)
+    df.loc[nan, ['pl_orbsmax']] = a[nan]
+
+
+
     # Fill missing EqT
     nan = ~np.isfinite(df.pl_eqt)
     sep = np.asarray(df.pl_orbsmax)*u.AU
@@ -58,6 +76,18 @@ def _fill_data(df, guess_masses=False):
     df['pl_bmasse'] = df.pl_bmassj * u.jupiterMass.to(u.earthMass)
 
 
+    # Transit duration
+
+    a = np.asarray(df.pl_orbsmax*u.AU.to(u.solRad))
+    b = a * np.cos(np.pi * np.asarray(df.pl_orbincl) / 180) / np.asarray(df.st_rad)
+    re = (np.asarray(df.pl_rade) * u.earthRad).to(u.solRad).value
+    l = (np.asarray((re + np.asarray(df.st_rad))**2) - (b*np.asarray(df.st_rad))**2)**0.5
+    Tdur = (np.asarray(df.pl_orbper)/np.pi) * np.arcsin(l/a)
+    nan = ~np.isfinite(df.pl_trandur)
+    df.loc[nan, 'pl_trandur'] = Tdur[nan]
+
+
+
     # Assume a fully hydrogen atmosphere that has 5 scale heights and is completely opaque in the WFC3 bandpass
 
     mu = np.zeros(len(df)) + 2
@@ -74,16 +104,24 @@ def _fill_data(df, guess_masses=False):
     delta = delta.value - (((np.asarray(df.pl_radj)*u.jupiterRad).to(u.km))**2/((np.asarray(df.st_rad)*u.solRad).to(u.km))**2)
     df['delta'] = delta
 
-    #One second scan and a 50 pixel spectrum
-    exptime = 1
-    scansize = 50
+    exptime = 60
+    timeoverheads = exptime * 1.5
+    rate = 0.5
+    saturation = 33000
+    dutycycle = (50/90)
 
-    star_fl = (5.5/0.15)*10.**(-0.4*(df.st_h-15))
-    #star_fl[star_fl>33000] = 33000
-    fl = df.delta*star_fl
-    fl *= scansize * exptime
+    flux = np.asarray((5.5/rate)*10.**(-0.4*(df.st_h-15))) * exptime
+    flux[flux > saturation] = saturation
 
-    df['snr'] = fl**0.5
+    obsdur = np.nanmin([df.pl_trandur, np.zeros(len(dfx)) + 0.125], axis=0)
+    science_time = ((obsdur * u.day).to(u.minute)) * dutycycle * (exptime/timeoverheads)
+    exposures = np.asarray(science_time.value, int)
+
+    star = (flux * exposures)
+    signal = star * df.delta
+
+    df['snr'] = np.asarray(signal/(star**0.5))
+
     return df
 
 
@@ -127,7 +165,7 @@ def plot_hist(ax=None, cap=3, keplerk2=False):
 
     for idx, li, lab in zip(range(len(list)), list, labels):
         fl = li.snr
-        h = plt.hist((fl[np.isfinite(fl)]), np.arange(0, np.nanmax(li.snr), 0.5), density=True, alpha=0.7, label=lab)
+        h = plt.hist((fl[np.isfinite(fl)]), np.linspace(0.5, np.nanmax(li.snr), 50), density=True, alpha=0.7, label=lab)
         # Annotations
         ok = ((np.nan_to_num(np.asarray(li.pl_radj)) * u.jupiterRad).to(u.earthRad) < small) & np.isfinite(li.snr)
         i = 0
